@@ -1,85 +1,106 @@
-import { PropTypes } from 'prop-types'
-import React, { Component } from 'react'
-import { Value } from 'slate'
-import classnames from 'classnames'
-import { react, typeCheck } from '@slate-editor/utils'
+import { PropTypes } from 'prop-types';
+import React, { Component } from 'react';
+import { Value } from 'slate';
+import classnames from 'classnames';
+import { typeCheck } from '@slate-editor/utils';
 
-import initialEditorState from './initialEditorState'
+import initialEditorState from './initialEditorState';
+
+const cloneElement = (children, props) => {
+  if (children && !children.length) {
+    children = [children];
+  }
+
+  return (
+    children &&
+    children.reduce((result, child, index) => {
+      if (child) {
+        result.push(
+          React.cloneElement(child, {
+            ...props,
+            key: index,
+          })
+        );
+      }
+
+      return result;
+    }, [])
+  );
+};
 
 class SlateEditor extends Component {
-  constructor (props) {
-    super(props)
+  constructor(props) {
+    super(props);
     this.state = {
       value: this.migrateStateVersion(props.initialState || initialEditorState),
       readOnly: false,
-      uid: new Date().getUTCMilliseconds()
-    }
+      uid: new Date().getUTCMilliseconds(),
+    };
   }
 
   //
   // Migrate Slate's Value object
   // From v0.25.3
   // To   v0.31.3
-  migrateStateVersion (value) {
-    let updatedValue = value
+  migrateStateVersion(value) {
+    let updatedValue = value;
     if (value.kind !== 'value') {
       updatedValue = JSON.parse(
         JSON.stringify(value)
           .replace(/"kind":"state"/g, '"kind":"value"')
           .replace(/"ranges":\[/g, '"leaves":[')
           .replace(/"kind":"range"/g, '"kind":"leaf"')
-      )
+      );
     }
     // Upgrade to v0.32.0
     // https://github.com/ianstormtaylor/slate/blob/master/packages/slate/Changelog.md#0320--january-4-2018
     updatedValue = JSON.parse(
-      JSON.stringify(updatedValue)
-        .replace(/"kind":/g, '"object":')
-    )
-    return Value.fromJSON(updatedValue)
+      JSON.stringify(updatedValue).replace(/"kind":/g, '"object":')
+    );
+    return Value.fromJSON(updatedValue);
   }
 
   //
   // This function change only the Editor value object
   //
-  onChange (change) {
-    const value = change.value
+  onChange(change) {
+    const value = change.value;
 
-    this.setState({ value })
+    this.setState({ value });
 
-    const { onChange } = this.props
-    if (typeCheck.isFunction(onChange)) onChange(value)
+    const { onChange } = this.props;
+    if (typeCheck.isFunction(onChange)) onChange(value);
   }
 
   //
   // This function change the SlateEditor state object.
   // It can be change the Editor value object too...
   //
-  changeState (state) {
-    this.setState(state)
+  changeState(state) {
+    this.setState(state);
   }
 
-  render () {
-    const { children, style, className, plugins } = this.props
+  render() {
+    const { children, style, className, plugins } = this.props;
 
     const childProps = {
       plugins,
       value: this.state.value,
       outerState: this.state,
       onChange: this.onChange.bind(this),
-      changeState: this.changeState.bind(this)
-    }
+      changeState: this.changeState.bind(this),
+    };
 
     return (
       <div className={classnames('editor--root', className)} style={style}>
-        {react.cloneElement(children, childProps)}
+        {cloneElement(children, childProps)}
       </div>
-    )
+    );
   }
 }
 
 SlateEditor.propTypes = {
-  initialState: PropTypes.object
-}
+  initialState: PropTypes.object,
+};
 
-export default SlateEditor
+export default SlateEditor;
